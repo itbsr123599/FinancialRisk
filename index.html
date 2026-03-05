@@ -534,6 +534,40 @@
         // Data Mocking
         let liveData = { fx: 0, diesel: 29.94, ft: 0.39, interest: 2.50 };
 
+        // --- LocalStorage: Save & Restore Scenario Panel ---
+        const scenarioFields = [
+            'base-fx', 'target-fx', 'vol-usd',
+            'base-diesel', 'target-diesel', 'vol-liter',
+            'base-ft', 'target-ft', 'vol-elec',
+            'adj-interest',
+            'vol-st', 'rate-st', 'type-st',
+            'vol-tr', 'rate-tr', 'type-tr',
+            'vol-term', 'rate-term', 'type-term'
+        ];
+
+        function saveScenarioToStorage() {
+            const data = {};
+            scenarioFields.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) data[id] = el.value;
+            });
+            localStorage.setItem('scenarioPanel', JSON.stringify(data));
+        }
+
+        function loadScenarioFromStorage() {
+            const raw = localStorage.getItem('scenarioPanel');
+            if (!raw) return;
+            try {
+                const data = JSON.parse(raw);
+                scenarioFields.forEach(id => {
+                    if (data[id] !== undefined) {
+                        const el = document.getElementById(id);
+                        if (el) el.value = data[id];
+                    }
+                });
+            } catch (e) { console.error('Load scenario error', e); }
+        }
+
         async function fetchAllData() {
             // Fetch USD/THB from BOT via boonsirifishery proxy
             try {
@@ -632,6 +666,7 @@
         }
 
         function runAllLogic() {
+            saveScenarioToStorage();
             const baseFx = parseFloat(document.getElementById('base-fx').value) || 0;
             const baseDiesel = parseFloat(document.getElementById('base-diesel').value) || 0;
             const baseFt = parseFloat(document.getElementById('base-ft').value) || 0;
@@ -907,7 +942,10 @@
             XLSX.writeFile(wb, "Financial_Risk_Monitoring_Report.xlsx");
         }
 
-        window.onload = fetchAllData;
+        window.onload = function () {
+            loadScenarioFromStorage();
+            fetchAllData();
+        };
     </script>
 </body>
 
