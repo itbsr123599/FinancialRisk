@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Risk Monitoring</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .panel-transition {
+            transition: max-height 0.4s ease-in-out, opacity 0.4s ease-in-out;
+            overflow: hidden;
+        }
+
+        .panel-hidden {
+            max-height: 0;
+            opacity: 0;
+            margin-bottom: 0;
+            border: none;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+
+        .panel-visible {
+            max-height: 1000px;
+            opacity: 1;
+            margin-bottom: 1.5rem;
+        }
+
+        .kpi-card {
+            background: linear-gradient(145deg, #ffffff, #f8fafc);
+        }
+
+        .severe-border {
+            border-left: 4px solid #ef4444 !important;
+        }
+
+        .moderate-border {
+            border-left: 4px solid #f97316 !important;
+        }
+
+        .mild-border {
+            border-left: 4px solid #eab308 !important;
+        }
+    </style>
+</head>
+
+<body class="p-4 md:p-8 text-slate-800">
+
+    <div id="dashboard-content" class="max-w-[1600px] mx-auto bg-transparent">
+
+        <div
+            class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-900 tracking-tight"><i
+                        class="fas fa-chart-line text-blue-600 mr-3"></i>Financial Risk Monitoring</h1>
+                <p class="text-slate-500 text-sm mt-2 font-medium" id="last-update">อัปเดตข้อมูลล่าสุด: กำลังโหลด...</p>
+            </div>
+            <div class="flex flex-wrap gap-3" data-html2canvas-ignore>
+                <button onclick="toggleScenarioPanel()"
+                    class="bg-slate-800 text-white px-5 py-2.5 rounded-xl shadow-md hover:bg-slate-700 text-sm font-bold transition-all flex items-center group">
+                    <i class="fas fa-sliders-h mr-2 group-hover:rotate-90 transition-transform"></i> ปรับสมมติฐาน
+                </button>
+                <button onclick="exportExcel()"
+                    class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-5 py-2.5 rounded-xl shadow-sm hover:bg-emerald-100 text-sm font-bold transition-all flex items-center">
+                    <i class="fas fa-file-excel mr-2"></i> Export Excel
+                </button>
+                <button onclick="exportPDF()"
+                    class="bg-red-50 border border-red-200 text-red-700 px-5 py-2.5 rounded-xl shadow-sm hover:bg-red-100 text-sm font-bold transition-all flex items-center">
+                    <i class="fas fa-file-pdf mr-2"></i> Export PDF
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+
+            <div
+                class="kpi-card rounded-2xl shadow-sm border border-slate-200 p-6 relative overflow-hidden group hover:shadow-lg transition-all duration-300">
+                <i
+                    class="fas fa-dollar-sign absolute -bottom-4 -right-2 text-7xl text-slate-100 opacity-60 group-hover:scale-110 transition-transform duration-300"></i>
+                <div class="relative z-10">
+                    <div class="flex justify-between items-start mb-2">
+                        <p class="text-sm font-bold text-slate-500 uppercase tracking-wider">USD/THB SPOT</p>
+                        <div id="status-fx" class="px-2 py-1 rounded text-xs font-bold bg-slate-100 text-slate-500">
+                            รอข้อมูล</div>
+                    </div>
+                    <h2 class="text-4xl font-extrabold text-slate-900 mb-1" id="live-fx">--.--</h2>
+                    <p class="text-xs text-slate-500 font-medium">เทียบฐาน: <span id="display-base-fx"
+                            class="font-bold">--.--</span></p>
+                </div>
+            </div>
+
+            <div
+                class="kpi-card rounded-2xl shadow-sm border border-slate-200 p-6 relative overflow-hidden group hover:shadow-lg transition-all duration-300">
+                <i
+                    class="fas fa-gas-pump absolute -bottom-4 -right-2 text-7xl text-slate-100 opacity-60 group-hover:scale-110 transition-transform duration-300"></i>
+                <div class="relative z-10">
+                    <div class="flex justify-between items-start mb-2">
+                        <p class="text-sm font-bold text-slate-500 uppercase tracking-wider">ดีเซล B7 (PTT)</p>
+                        <div id="status-diesel" class="px-2 py-1 rounded text-xs font-bold bg-slate-100 text-slate-500">
+                            รอข้อมูล</div>
+                    </div>
+                    <h2 class="text-4xl font-extrabold text-slate-900 mb-1" id="live-diesel">--.--</h2>
+                    <p class="text-xs text-slate-500 font-medium">เทียบฐาน: <span id="display-base-diesel"
+                            class="font-bold">--.--</span></p>
+                </div>
+            </div>
+
+            <div
+                class="kpi-card rounded-2xl shadow-sm border border-slate-200 p-6 relative overflow-hidden group hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-white to-purple-50">
+                <i
+                    class="fas fa-bolt absolute -bottom-4 -right-2 text-7xl text-purple-100 opacity-60 group-hover:scale-110 transition-transform duration-300"></i>
+                <div class="relative z-10">
+                    <div class="flex justify-between items-start mb-2">
+                        <p class="text-sm font-bold text-slate-500 uppercase tracking-wider">ค่า FT (ฐาน)</p>
+                    </div>
+                    <h2 class="text-4xl font-extrabold text-slate-900 mb-2" id="display-ft-base">--.--</h2>
+                    <p
+                        class="text-xs font-bold text-purple-700 bg-purple-100 border border-purple-200 inline-block px-2.5 py-1 rounded-md">
+                        <i class="fas fa-bullseye mr-1"></i>จำลอง: <span id="display-ft-target">--.--</span> บ.
+                    </p>
+                </div>
+            </div>
+
+            <div
+                class="kpi-card rounded-2xl shadow-sm border border-slate-200 p-6 relative overflow-hidden group hover:shadow-lg transition-all duration-300">
+                <i
+                    class="fas fa-landmark absolute -bottom-4 -right-2 text-7xl text-slate-100 opacity-60 group-hover:scale-110 transition-transform duration-300"></i>
+                <div class="relative z-10">
+                    <div class="flex justify-between items-start mb-2">
+                        <p class="text-sm font-bold text-slate-500 uppercase tracking-wider">ดอกเบี้ยนโยบาย (BOT)</p>
+                        <div id="status-interest"
+                            class="px-2 py-1 rounded text-xs font-bold bg-slate-100 text-slate-500">รอข้อมูล</div>
+                    </div>
+                    <h2 class="text-4xl font-extrabold text-slate-900 mb-1" id="live-interest">--.--<span
+                            class="text-2xl font-normal text-slate-500 ml-1">%</span></h2>
+                    <p class="text-xs text-slate-500 font-medium">ส่งผลต่อสินเชื่อ Float Rate</p>
+                </div>
+            </div>
+
+        </div>
+
+        <div id="scenario-panel"
+            class="bg-white rounded-2xl shadow-md border border-slate-200 p-6 panel-transition panel-hidden"
+            data-html2canvas-ignore>
+            <div class="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
+                <div class="flex items-center">
+                    <div class="bg-blue-100 p-2 rounded-lg text-blue-600 mr-3"><i class="fas fa-sliders-h text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">แผงควบคุมและจำลองสถานการณ์ (Control Panel)</h3>
+                        <p class="text-xs text-slate-500">ปรับตัวเลขเพื่อดูผลกระทบต่อกระแสเงินสดและดอกเบี้ยจ่าย</p>
+                    </div>
+                </div>
+                <button onclick="toggleScenarioPanel()"
+                    class="bg-slate-100 text-slate-500 hover:bg-red-100 hover:text-red-500 w-8 h-8 rounded-full flex justify-center items-center transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+
+                <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 xl:col-span-5">
+                    <h4 class="text-sm font-bold text-slate-700 mb-4 border-b border-slate-200 pb-2"><i
+                            class="fas fa-box text-blue-500 mr-2"></i>ต้นทุนดำเนินงาน (Operations)</h4>
+
+                    <div class="space-y-3">
+                        <div class="flex gap-2 items-end bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm">
+                            <div class="w-1/3">
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase truncate mb-1">เรทฐาน
+                                    (Base)</label>
+                                <input type="number" id="base-fx" value="31.50" oninput="runAllLogic()"
+                                    class="w-full border border-slate-300 rounded p-1.5 text-sm outline-none focus:border-blue-500">
+                            </div>
+                            <div class="w-1/3">
+                                <label
+                                    class="block text-[10px] font-bold text-red-500 uppercase truncate mb-1">จำลองวิกฤต
+                                    (Target)</label>
+                                <input type="number" id="target-fx" value="32.50" step="0.1" oninput="runAllLogic()"
+                                    class="w-full bg-red-50 border border-red-300 text-red-700 font-bold rounded p-1.5 text-sm outline-none focus:border-red-500">
+                            </div>
+                            <div class="w-1/3">
+                                <label
+                                    class="block text-[10px] font-bold text-blue-600 uppercase truncate mb-1">ยอดชำระ(USD)/เดือน</label>
+                                <input type="text" inputmode="numeric" id="vol-usd" value="500,000"
+                                    oninput="formatNumberInput(this); runAllLogic()"
+                                    class="w-full border border-slate-300 rounded p-1.5 text-sm text-right font-medium placeholder-slate-400 focus:border-blue-500 outline-none">
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2 items-end bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm">
+                            <div class="w-1/3">
+                                <label
+                                    class="block text-[10px] font-bold text-slate-500 uppercase truncate mb-1">ดีเซลฐาน
+                                    (Base)</label>
+                                <input type="number" id="base-diesel" value="29.94" oninput="runAllLogic()"
+                                    class="w-full border border-slate-300 rounded p-1.5 text-sm outline-none focus:border-blue-500">
+                            </div>
+                            <div class="w-1/3">
+                                <label
+                                    class="block text-[10px] font-bold text-red-500 uppercase truncate mb-1">จำลองวิกฤต
+                                    (Target)</label>
+                                <input type="number" id="target-diesel" value="32.00" step="0.5" oninput="runAllLogic()"
+                                    class="w-full bg-orange-50 border border-orange-300 text-orange-700 font-bold rounded p-1.5 text-sm outline-none focus:border-orange-500">
+                            </div>
+                            <div class="w-1/3">
+                                <label
+                                    class="block text-[10px] font-bold text-blue-600 uppercase truncate mb-1">จำนวนลิตรที่ใช้/เดือน</label>
+                                <input type="text" inputmode="numeric" id="vol-liter" value="50,000"
+                                    oninput="formatNumberInput(this); runAllLogic()"
+                                    class="w-full border border-slate-300 rounded p-1.5 text-sm text-right font-medium placeholder-slate-400 focus:border-blue-500 outline-none">
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2 items-end bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm">
+                            <div class="w-1/3">
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase truncate mb-1">FT ฐาน
+                                    (Base)</label>
+                                <input type="number" id="base-ft" value="0.39" step="0.01" oninput="runAllLogic()"
+                                    class="w-full border border-slate-300 rounded p-1.5 text-sm outline-none focus:border-blue-500">
+                            </div>
+                            <div class="w-1/3">
+                                <label
+                                    class="block text-[10px] font-bold text-red-500 uppercase truncate mb-1">จำลองวิกฤต
+                                    (Target)</label>
+                                <input type="number" id="target-ft" value="0.60" step="0.01" oninput="runAllLogic()"
+                                    class="w-full bg-blue-50 border border-blue-300 text-blue-700 font-bold rounded p-1.5 text-sm outline-none focus:border-blue-500">
+                            </div>
+                            <div class="w-1/3">
+                                <label
+                                    class="block text-[10px] font-bold text-blue-600 uppercase truncate mb-1">ใช้ไฟฟ้า
+                                    kWh/เดือน</label>
+                                <input type="text" inputmode="numeric" id="vol-elec" value="200,000"
+                                    oninput="formatNumberInput(this); runAllLogic()"
+                                    class="w-full border border-slate-300 rounded p-1.5 text-sm text-right font-medium placeholder-slate-400 focus:border-blue-500 outline-none">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-indigo-50 p-5 rounded-xl border border-indigo-100 xl:col-span-7">
+
+                    <div class="flex items-center justify-between mb-4 border-b border-indigo-200 pb-2">
+                        <h4 class="text-sm font-bold text-indigo-800"><i
+                                class="fas fa-landmark text-indigo-500 mr-2"></i>พอร์ตสินเชื่อและดอกเบี้ย (Loan
+                            Portfolio)</h4>
+
+                        <div
+                            class="flex items-center bg-purple-100 border border-purple-300 rounded-lg px-3 py-1.5 shadow-sm">
+                            <label
+                                class="text-[11px] font-bold text-purple-800 mr-2 uppercase">จำลองปรับดอกเบี้ยเพิ่ม/ลด</label>
+                            <input type="number" id="adj-interest" value="1.00" step="0.25" oninput="runAllLogic()"
+                                class="w-16 text-right bg-white border border-purple-300 text-purple-700 font-bold rounded p-1 outline-none text-sm">
+                            <span class="text-purple-700 font-bold ml-1 text-sm">%</span>
+                        </div>
+                    </div>
+
+                    <div
+                        class="flex gap-3 mb-3 items-center bg-white p-2.5 rounded-lg border border-indigo-50 shadow-sm">
+                        <div class="w-1/4">
+                            <label
+                                class="block text-[10px] font-bold text-slate-500 uppercase truncate mb-1">กู้ระยะสั้น
+                                (PN/OD)</label>
+                            <input type="text" inputmode="numeric" id="vol-st" value="5,000,000"
+                                oninput="formatNumberInput(this); runAllLogic()"
+                                class="w-full border border-slate-300 rounded p-1.5 text-sm text-right font-medium outline-none focus:border-indigo-500">
+                        </div>
+                        <div class="w-1/4">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase truncate mb-1">ดบ.เดิม
+                                (%)</label>
+                            <input type="number" id="rate-st" value="6.00" step="0.1" oninput="runAllLogic()"
+                                class="w-full border border-slate-300 rounded p-1.5 text-sm outline-none focus:border-indigo-500">
+                        </div>
+                        <div class="w-1/4">
+                            <label
+                                class="block text-[10px] font-bold text-slate-500 uppercase truncate mb-1">ประเภท</label>
+                            <select id="type-st" onchange="runAllLogic()"
+                                class="w-full border border-slate-300 rounded p-1.5 text-sm bg-white outline-none focus:border-indigo-500">
+                                <option value="float">Float</option>
+                                <option value="fixed">Fixed</option>
+                            </select>
+                        </div>
+                        <div
+                            class="w-1/4 text-right bg-slate-50 p-2 rounded border border-slate-100 h-full flex flex-col justify-center">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase">ดบ.ใหม่</span>
+                            <span id="new-rate-st" class="text-base font-extrabold text-slate-800">6.00%</span>
+                        </div>
+                    </div>
+
+                    <div
+                        class="flex gap-3 mb-3 items-center bg-white p-2.5 rounded-lg border border-indigo-50 shadow-sm">
+                        <div class="w-1/4">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase truncate mb-1">กู้ Trust
+                                Receipt (TR)</label>
+                            <input type="text" inputmode="numeric" id="vol-tr" value="10,000,000"
+                                oninput="formatNumberInput(this); runAllLogic()"
+                                class="w-full border border-slate-300 rounded p-1.5 text-sm text-right font-medium outline-none focus:border-indigo-500">
+                        </div>
+                        <div class="w-1/4">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase truncate mb-1">ดบ.เดิม
+                                (%)</label>
+                            <input type="number" id="rate-tr" value="4.50" step="0.1" oninput="runAllLogic()"
+                                class="w-full border border-slate-300 rounded p-1.5 text-sm outline-none focus:border-indigo-500">
+                        </div>
+                        <div class="w-1/4">
+                            <label
+                                class="block text-[10px] font-bold text-slate-500 uppercase truncate mb-1">ประเภท</label>
+                            <select id="type-tr" onchange="runAllLogic()"
+                                class="w-full border border-slate-300 rounded p-1.5 text-sm bg-white outline-none focus:border-indigo-500">
+                                <option value="float">Float</option>
+                                <option value="fixed">Fixed</option>
+                            </select>
+                        </div>
+                        <div
+                            class="w-1/4 text-right bg-slate-50 p-2 rounded border border-slate-100 h-full flex flex-col justify-center">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase">ดบ.ใหม่</span>
+                            <span id="new-rate-tr" class="text-base font-extrabold text-slate-800">4.50%</span>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 items-center bg-white p-2.5 rounded-lg border border-indigo-50 shadow-sm">
+                        <div class="w-1/4">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase truncate mb-1">ยอด Term
+                                Loan</label>
+                            <input type="text" inputmode="numeric" id="vol-term" value="20,000,000"
+                                oninput="formatNumberInput(this); runAllLogic()"
+                                class="w-full border border-slate-300 rounded p-1.5 text-sm text-right font-medium outline-none focus:border-indigo-500">
+                        </div>
+                        <div class="w-1/4">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase truncate mb-1">ดบ.เดิม
+                                (%)</label>
+                            <input type="number" id="rate-term" value="5.00" step="0.1" oninput="runAllLogic()"
+                                class="w-full border border-slate-300 rounded p-1.5 text-sm outline-none focus:border-indigo-500">
+                        </div>
+                        <div class="w-1/4">
+                            <label
+                                class="block text-[10px] font-bold text-slate-500 uppercase truncate mb-1">ประเภท</label>
+                            <select id="type-term" onchange="runAllLogic()"
+                                class="w-full border border-slate-300 rounded p-1.5 text-sm bg-white outline-none focus:border-indigo-500">
+                                <option value="fixed">Fixed</option>
+                                <option value="float">Float</option>
+                            </select>
+                        </div>
+                        <div
+                            class="w-1/4 text-right bg-slate-50 p-2 rounded border border-slate-100 h-full flex flex-col justify-center">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase">ดบ.ใหม่</span>
+                            <span id="new-rate-term" class="text-base font-extrabold text-slate-800">5.00%</span>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
+
+            <div
+                class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 lg:col-span-1 flex flex-col relative overflow-hidden">
+                <div class="flex items-center mb-6">
+                    <div class="bg-slate-800 text-white p-2 rounded-lg mr-3"><i class="fas fa-chart-pie"></i></div>
+                    <h3 class="text-xl font-extrabold text-slate-800">Financial Impact</h3>
+                </div>
+                <p class="text-sm text-slate-500 mb-6 font-medium">ภาระค่าใช้จ่ายส่วนเพิ่ม (ต่อเดือน) จากการจำลอง</p>
+
+                <div class="space-y-6 flex-grow">
+                    <div>
+                        <div class="flex justify-between items-end mb-1">
+                            <span class="text-sm text-slate-600 font-bold">ผลกระทบอัตราแลกเปลี่ยน</span>
+                            <span id="impact-fx" class="font-bold text-slate-800 text-lg">+ 0 ฿</span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-2">
+                            <div id="bar-fx" class="bg-blue-500 h-2 rounded-full transition-all duration-500"
+                                style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-end mb-1">
+                            <span class="text-sm text-slate-600 font-bold">ผลกระทบดีเซลขนส่ง</span>
+                            <span id="impact-fleet" class="font-bold text-slate-800 text-lg">+ 0 ฿</span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-2">
+                            <div id="bar-fleet" class="bg-orange-500 h-2 rounded-full transition-all duration-500"
+                                style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-end mb-1">
+                            <span class="text-sm text-slate-600 font-bold">ผลกระทบค่าไฟคลังเย็น</span>
+                            <span id="impact-ft" class="font-bold text-slate-800 text-lg">+ 0 ฿</span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-2">
+                            <div id="bar-ft" class="bg-teal-500 h-2 rounded-full transition-all duration-500"
+                                style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-end mb-1">
+                            <span class="text-sm text-slate-600 font-bold">ผลกระทบดอกเบี้ยจ่าย <span
+                                    class="text-[10px] font-normal text-slate-400">(เฉพาะ Float)</span></span>
+                            <span id="impact-interest" class="font-bold text-purple-600 text-lg">+ 0 ฿</span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-2">
+                            <div id="bar-interest" class="bg-purple-500 h-2 rounded-full transition-all duration-500"
+                                style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-5 border-t border-slate-200">
+                    <p class="text-sm text-slate-500 text-center mb-2 font-bold uppercase tracking-wider">
+                        กระแสเงินสดที่ต้องเตรียมเพิ่ม</p>
+                    <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 shadow-inner">
+                        <div id="impact-total" class="text-3xl font-extrabold text-center text-red-600 tracking-tight"
+                            style="transition: color 0.3s;">+ 0 บาท</div>
+                    </div>
+                </div>
+            </div>
+
+            <div
+                class="bg-slate-900 rounded-2xl shadow-xl p-8 lg:col-span-2 relative overflow-hidden flex flex-col text-white">
+                <i class="fas fa-chess-knight absolute -top-10 -right-10 text-9xl text-slate-800 opacity-50"></i>
+
+                <div class="flex justify-between items-center mb-8 relative z-10">
+                    <div class="flex items-center">
+                        <div class="bg-emerald-500/20 text-emerald-400 p-2.5 rounded-xl mr-4"><i
+                                class="fas fa-microchip text-xl"></i></div>
+                        <div>
+                            <h3 class="text-2xl font-extrabold text-white tracking-tight">AI Executive Action Plan</h3>
+                            <p class="text-xs text-slate-400 mt-1">วิเคราะห์กลยุทธ์ตามระดับความรุนแรง (Severity-Based
+                                Matrix)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10 flex-grow">
+
+                    <div id="card-ai-fx"
+                        class="bg-slate-800/80 p-5 rounded-2xl border border-slate-700 transition-all duration-300">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center">
+                                <div
+                                    class="bg-blue-500/20 w-8 h-8 rounded-lg flex items-center justify-center text-blue-400 mr-3">
+                                    <i class="fas fa-globe"></i>
+                                </div>
+                                <h4 class="font-bold text-white tracking-wide">กลยุทธ์นำเข้า (FX)</h4>
+                            </div>
+                            <span id="badge-fx" class="text-[10px] font-bold px-2 py-1 rounded">Normal</span>
+                        </div>
+                        <div id="ai-text-fx" class="text-sm text-slate-300 space-y-2 leading-relaxed font-light"></div>
+                    </div>
+
+                    <div id="card-ai-fleet"
+                        class="bg-slate-800/80 p-5 rounded-2xl border border-slate-700 transition-all duration-300">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center">
+                                <div
+                                    class="bg-orange-500/20 w-8 h-8 rounded-lg flex items-center justify-center text-orange-400 mr-3">
+                                    <i class="fas fa-truck-loading"></i>
+                                </div>
+                                <h4 class="font-bold text-white tracking-wide">กลยุทธ์ขนส่ง (Logistics)</h4>
+                            </div>
+                            <span id="badge-fleet" class="text-[10px] font-bold px-2 py-1 rounded">Normal</span>
+                        </div>
+                        <div id="ai-text-fleet" class="text-sm text-slate-300 space-y-2 leading-relaxed font-light">
+                        </div>
+                    </div>
+
+                    <div id="card-ai-ft"
+                        class="bg-slate-800/80 p-5 rounded-2xl border border-slate-700 transition-all duration-300">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center">
+                                <div
+                                    class="bg-teal-500/20 w-8 h-8 rounded-lg flex items-center justify-center text-teal-400 mr-3">
+                                    <i class="fas fa-snowflake"></i>
+                                </div>
+                                <h4 class="font-bold text-white tracking-wide">กลยุทธ์คลังแช่แข็ง</h4>
+                            </div>
+                            <span id="badge-ft" class="text-[10px] font-bold px-2 py-1 rounded">Normal</span>
+                        </div>
+                        <div id="ai-text-ft" class="text-sm text-slate-300 space-y-2 leading-relaxed font-light"></div>
+                    </div>
+
+                    <div id="card-ai-interest"
+                        class="bg-slate-800/80 p-5 rounded-2xl border border-slate-700 transition-all duration-300">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center">
+                                <div
+                                    class="bg-purple-500/20 w-8 h-8 rounded-lg flex items-center justify-center text-purple-400 mr-3">
+                                    <i class="fas fa-file-invoice-dollar"></i>
+                                </div>
+                                <h4 class="font-bold text-white tracking-wide">พอร์ตสินเชื่อ (Loans)</h4>
+                            </div>
+                            <span id="badge-interest" class="text-[10px] font-bold px-2 py-1 rounded">Normal</span>
+                        </div>
+                        <div id="ai-text-interest" class="text-sm text-slate-300 space-y-2 leading-relaxed font-light">
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Data Mocking
+        let liveData = { fx: 0, diesel: 29.94, ft: 0.39, interest: 2.50 };
+
+        async function fetchAllData() {
+            // Fetch USD/THB from BOT via boonsirifishery proxy
+            try {
+                const res = await fetch('https://boonsirifishery.com/rate/rate.php');
+                const data = await res.json();
+                console.log("FX API Response:", data);
+                const usd = data.responseContent.find(c => c.currency_id === 'USD');
+                liveData.fx = parseFloat(usd.selling);
+            } catch (e) {
+                liveData.fx = 31.65;
+                console.error("FX API Error", e);
+            }
+
+            // Fetch PTT Diesel B7 price
+            try {
+                const oilRes = await fetch('https://api.chnwt.dev/thai-oil-api/latest');
+                const oilData = await oilRes.json();
+                liveData.diesel = parseFloat(oilData.response.stations.ptt.diesel_b7.price) || 0.00;
+            } catch (e) {
+                liveData.diesel = 0.00;
+                console.error("Thai Oil API Error", e);
+            }
+
+            const now = new Date();
+            const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Bangkok' };
+            document.getElementById('last-update').innerText = 'อัปเดตข้อมูลล่าสุด: ' + now.toLocaleDateString('th-TH', options);
+
+            runAllLogic();
+        }
+
+        function formatNumberInput(input) {
+            let val = input.value.replace(/,/g, '').replace(/[^\d.]/g, '');
+            if (val) {
+                let parts = val.toString().split(".");
+                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                input.value = parts.join(".");
+            }
+        }
+
+        function getRawNumber(elementId) {
+            let val = document.getElementById(elementId).value;
+            return parseFloat(val.replace(/,/g, '')) || 0;
+        }
+
+        function processLoan(prefix, adjInterest) {
+            const vol = getRawNumber(`vol-${prefix}`);
+            const rate = parseFloat(document.getElementById(`rate-${prefix}`).value) || 0;
+            const type = document.getElementById(`type-${prefix}`).value;
+
+            let newRate = rate;
+            let impact = 0;
+
+            if (type === 'float') {
+                newRate = rate + adjInterest;
+                impact = (vol * (adjInterest / 100)) / 12;
+            }
+
+            const displayEl = document.getElementById(`new-rate-${prefix}`);
+            displayEl.innerText = newRate.toFixed(2) + '%';
+
+            if (type === 'float' && adjInterest !== 0) {
+                displayEl.className = adjInterest > 0 ? "text-base font-extrabold text-red-500" : "text-base font-extrabold text-emerald-500";
+            } else {
+                displayEl.className = "text-base font-extrabold text-slate-800";
+            }
+            return impact;
+        }
+
+        // --- Helper Function สำหรับการตั้งค่าสี AI Card ---
+        function setAICardStyle(cardId, badgeId, level) {
+            const card = document.getElementById(cardId);
+            const badge = document.getElementById(badgeId);
+
+            // Reset classes
+            card.classList.remove('mild-border', 'moderate-border', 'severe-border');
+
+            if (level === 'SEVERE') {
+                card.classList.add('severe-border');
+                badge.className = "text-[10px] font-bold px-2 py-1 rounded bg-red-500/20 text-red-400";
+                badge.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i> CRITICAL';
+            } else if (level === 'MODERATE') {
+                card.classList.add('moderate-border');
+                badge.className = "text-[10px] font-bold px-2 py-1 rounded bg-orange-500/20 text-orange-400";
+                badge.innerHTML = 'WARNING';
+            } else if (level === 'MILD') {
+                card.classList.add('mild-border');
+                badge.className = "text-[10px] font-bold px-2 py-1 rounded bg-yellow-500/20 text-yellow-400";
+                badge.innerHTML = 'MONITOR';
+            } else if (level === 'GOOD') {
+                badge.className = "text-[10px] font-bold px-2 py-1 rounded bg-emerald-500/20 text-emerald-400";
+                badge.innerHTML = 'SAFE';
+            } else {
+                badge.className = "text-[10px] font-bold px-2 py-1 rounded bg-slate-700 text-slate-400";
+                badge.innerHTML = 'NORMAL';
+            }
+        }
+
+        function runAllLogic() {
+            const baseFx = parseFloat(document.getElementById('base-fx').value) || 0;
+            const baseDiesel = parseFloat(document.getElementById('base-diesel').value) || 0;
+            const baseFt = parseFloat(document.getElementById('base-ft').value) || 0;
+
+            const targetFx = parseFloat(document.getElementById('target-fx').value) || 0;
+            const targetDiesel = parseFloat(document.getElementById('target-diesel').value) || 0;
+            const targetFt = parseFloat(document.getElementById('target-ft').value) || 0;
+
+            const volUsd = getRawNumber('vol-usd');
+            const volLiter = getRawNumber('vol-liter');
+            const volElec = getRawNumber('vol-elec');
+
+            // Dashboard Updates (KPIs)
+            document.getElementById('live-fx').innerText = liveData.fx.toFixed(2);
+            document.getElementById('display-base-fx').innerText = baseFx.toFixed(2);
+            document.getElementById('live-diesel').innerText = liveData.diesel.toFixed(2);
+            document.getElementById('display-base-diesel').innerText = baseDiesel.toFixed(2);
+            document.getElementById('display-ft-base').innerHTML = `${baseFt.toFixed(2)}`;
+            document.getElementById('display-ft-target').innerText = targetFt.toFixed(2);
+            document.getElementById('live-interest').innerHTML = `${liveData.interest.toFixed(2)}<span class="text-2xl font-normal text-slate-500 ml-1">%</span>`;
+
+            // Logic Engine Status
+            const diffLiveFx = liveData.fx - baseFx;
+            const statFx = document.getElementById('status-fx');
+            if (diffLiveFx > 0.10) { statFx.className = "px-2 py-1 rounded text-xs font-bold bg-red-100 text-red-600"; statFx.innerHTML = "<i class='fas fa-arrow-up mr-1'></i> อ่อนค่า"; }
+            else if (diffLiveFx < -0.10) { statFx.className = "px-2 py-1 rounded text-xs font-bold bg-emerald-100 text-emerald-600"; statFx.innerHTML = "<i class='fas fa-arrow-down mr-1'></i> แข็งค่า"; }
+            else { statFx.className = "px-2 py-1 rounded text-xs font-bold bg-blue-50 text-blue-600"; statFx.innerHTML = "<i class='fas fa-minus mr-1'></i> คงตัว"; }
+
+            const diffLiveDiesel = liveData.diesel - baseDiesel;
+            const statDiesel = document.getElementById('status-diesel');
+            if (diffLiveDiesel > 0) { statDiesel.className = "px-2 py-1 rounded text-xs font-bold bg-red-100 text-red-600"; statDiesel.innerHTML = `<i class='fas fa-arrow-up mr-1'></i> +${diffLiveDiesel.toFixed(2)} บ.`; }
+            else if (diffLiveDiesel < 0) { statDiesel.className = "px-2 py-1 rounded text-xs font-bold bg-emerald-100 text-emerald-600"; statDiesel.innerHTML = `<i class='fas fa-arrow-down mr-1'></i> ${diffLiveDiesel.toFixed(2)} บ.`; }
+            else { statDiesel.className = "px-2 py-1 rounded text-xs font-bold bg-blue-50 text-blue-600"; statDiesel.innerHTML = "<i class='fas fa-minus mr-1'></i> ทรงตัว"; }
+
+            const adjInterest = parseFloat(document.getElementById('adj-interest').value) || 0;
+            const statInterest = document.getElementById('status-interest');
+            if (adjInterest > 0) { statInterest.className = "px-2 py-1 rounded text-xs font-bold bg-red-100 text-red-600"; statInterest.innerHTML = `<i class='fas fa-arrow-up mr-1'></i> จำลอง +${adjInterest.toFixed(2)}%`; }
+            else if (adjInterest < 0) { statInterest.className = "px-2 py-1 rounded text-xs font-bold bg-emerald-100 text-emerald-600"; statInterest.innerHTML = `<i class='fas fa-arrow-down mr-1'></i> จำลอง ${adjInterest.toFixed(2)}%`; }
+            else { statInterest.className = "px-2 py-1 rounded text-xs font-bold bg-blue-50 text-blue-600"; statInterest.innerHTML = "<i class='fas fa-minus mr-1'></i> ดอกเบี้ยเดิม"; }
+
+            // Impacts
+            let fxImpact = (targetFx - baseFx) * volUsd; if (fxImpact < 0) fxImpact = 0;
+            let fleetImpact = (targetDiesel - baseDiesel) * volLiter; if (fleetImpact < 0) fleetImpact = 0;
+            let ftImpact = (targetFt - baseFt) * volElec; if (ftImpact < 0) ftImpact = 0;
+
+            let stImpact = processLoan('st', adjInterest);
+            let trImpact = processLoan('tr', adjInterest);
+            let termImpact = processLoan('term', adjInterest);
+            let interestImpact = stImpact + trImpact + termImpact;
+            let totalImpact = fxImpact + fleetImpact + ftImpact + interestImpact;
+
+            document.getElementById('impact-fx').innerText = `+ ${fxImpact.toLocaleString(undefined, { maximumFractionDigits: 0 })} ฿`;
+            document.getElementById('impact-fleet').innerText = `+ ${fleetImpact.toLocaleString(undefined, { maximumFractionDigits: 0 })} ฿`;
+            document.getElementById('impact-ft').innerText = `+ ${ftImpact.toLocaleString(undefined, { maximumFractionDigits: 0 })} ฿`;
+
+            const intElem = document.getElementById('impact-interest');
+            if (interestImpact >= 0) {
+                intElem.innerText = `+ ${interestImpact.toLocaleString(undefined, { maximumFractionDigits: 0 })} ฿`;
+                intElem.className = "font-bold text-purple-600 text-lg";
+            } else {
+                intElem.innerText = `- ${Math.abs(interestImpact).toLocaleString(undefined, { maximumFractionDigits: 0 })} ฿`;
+                intElem.className = "font-bold text-emerald-500 text-lg";
+            }
+
+            const totElem = document.getElementById('impact-total');
+            if (totalImpact >= 0) {
+                totElem.innerText = `+ ${totalImpact.toLocaleString(undefined, { maximumFractionDigits: 0 })} บาท`;
+                totElem.className = "text-3xl font-extrabold text-center text-red-600 tracking-tight";
+            } else {
+                totElem.innerText = `- ${Math.abs(totalImpact).toLocaleString(undefined, { maximumFractionDigits: 0 })} บาท`;
+                totElem.className = "text-3xl font-extrabold text-center text-emerald-500 tracking-tight";
+            }
+
+            let maxImpact = Math.max(fxImpact, fleetImpact, ftImpact, Math.abs(interestImpact));
+            maxImpact = maxImpact === 0 ? 1 : maxImpact;
+            document.getElementById('bar-fx').style.width = `${(fxImpact / maxImpact) * 100}%`;
+            document.getElementById('bar-fleet').style.width = `${(fleetImpact / maxImpact) * 100}%`;
+            document.getElementById('bar-ft').style.width = `${(ftImpact / maxImpact) * 100}%`;
+            document.getElementById('bar-interest').style.width = `${(Math.abs(interestImpact) / maxImpact) * 100}%`;
+            document.getElementById('bar-interest').className = interestImpact < 0 ? "bg-emerald-400 h-2 rounded-full transition-all duration-500" : "bg-purple-500 h-2 rounded-full transition-all duration-500";
+
+
+            // ==========================================
+            // NEW SMART AI SUGGESTIONS (SEVERITY MATRIX)
+            // ==========================================
+
+            // 1. FX AI Logic (อิงจากการนำเข้าสินค้า)
+            const fxDiffPct = baseFx > 0 ? ((targetFx - baseFx) / baseFx) * 100 : 0;
+            if (fxDiffPct > 5) { // Severe (>5%)
+                setAICardStyle('card-ai-fx', 'badge-fx', 'SEVERE');
+                document.getElementById('ai-text-fx').innerHTML = `
+                    <ul class="list-disc pl-4 space-y-1.5">
+                        <li><span class="text-red-300 font-bold">Freeze Non-Core SKUs:</span> ชะลอการสั่งสินค้าแช่แข็งกลุ่มหมุนเวียนช้าทันที เพื่อลดภาระยอดชำระต่างประเทศ</li>
+                        <li><span class="text-red-300 font-bold">Price Restructuring:</span> คำนวณต้นทุนใหม่และเริ่มแจ้งปรับราคากับลูกค้า B2B ภายใน 14 วัน (Pass-on Cost)</li>
+                        <li><span class="text-red-300 font-bold">Max Hedging:</span> ทำ Forward Contract ล็อกเรทเต็ม 100% สำหรับออเดอร์ที่คอนเฟิร์มแล้ว</li>
+                    </ul>`;
+            } else if (fxDiffPct > 2) { // Moderate (2-5%)
+                setAICardStyle('card-ai-fx', 'badge-fx', 'MODERATE');
+                document.getElementById('ai-text-fx').innerHTML = `
+                    <ul class="list-disc pl-4 space-y-1.5">
+                        <li><span class="text-orange-300 font-bold">Increase Hedging:</span> ขยับสัดส่วนการทำ Forward Contract เป็น 70-80% เพื่อคุมกรอบต้นทุน</li>
+                        <li><span class="text-orange-300 font-bold">Lead Payment:</span> เร่งดึงเงินสดมาชำระหนี้ต่างประเทศที่ใกล้ครบดีลก่อนที่เงินบาทจะอ่อนค่าไปกว่านี้</li>
+                    </ul>`;
+            } else if (fxDiffPct > 0) { // Mild (0-2%)
+                setAICardStyle('card-ai-fx', 'badge-fx', 'MILD');
+                document.getElementById('ai-text-fx').innerHTML = `
+                    <ul class="list-disc pl-4 space-y-1.5 text-slate-300">
+                        <li>ติดตามแนวโน้มอัตราแลกเปลี่ยนใกล้ชิด</li>
+                        <li>คงนโยบาย Hedging ปกติที่ 50% หรือพิจารณาทำ Options ป้องกันความเสี่ยงหางเลข</li>
+                    </ul>`;
+            } else {
+                setAICardStyle('card-ai-fx', 'badge-fx', 'GOOD');
+                document.getElementById('ai-text-fx').innerHTML = `<p class="text-emerald-400"><i class="fas fa-check-circle mr-1"></i> ต้นทุนอยู่ในเกณฑ์บริหารได้ ได้เปรียบด้านต้นทุนสินค้าเข้า ทยอยจ่ายตาม Term ปกติ</p>`;
+            }
+
+            // 2. Logistics / Diesel AI Logic (อิงจาก Fleet ขนาดใหญ่ 90+ คัน)
+            const dieselDiffPct = baseDiesel > 0 ? ((targetDiesel - baseDiesel) / baseDiesel) * 100 : 0;
+            if (dieselDiffPct > 8) { // Severe
+                setAICardStyle('card-ai-fleet', 'badge-fleet', 'SEVERE');
+                document.getElementById('ai-text-fleet').innerHTML = `
+                    <ul class="list-disc pl-4 space-y-1.5">
+                        <li><span class="text-red-300 font-bold">Fuel Surcharge:</span> ประกาศใช้มาตรการบวกค่าขนส่งส่วนเพิ่มกับลูกค้าอ้างอิงตามดัชนีราคาน้ำมันทันที</li>
+                        <li><span class="text-red-300 font-bold">Shift to Outsource:</span> สำหรับรูทระยะไกลที่วิ่งไม่เต็มคัน ให้สับไปจ้างขนส่งภายนอกถ้าต้นทุนต่อเที่ยวถูกกว่า</li>
+                        <li><span class="text-red-300 font-bold">EV Pilot:</span> นำข้อมูลเปรียบเทียบรถ EV ที่ศึกษาไว้มาประเมินการเช่าใช้ (Leasing) แทนรถน้ำมันในบางพื้นที่ด่วน</li>
+                    </ul>`;
+            } else if (dieselDiffPct > 3) { // Moderate
+                setAICardStyle('card-ai-fleet', 'badge-fleet', 'MODERATE');
+                document.getElementById('ai-text-fleet').innerHTML = `
+                    <ul class="list-disc pl-4 space-y-1.5">
+                        <li><span class="text-orange-300 font-bold">Lock Fuel Price:</span> เจรจาสัญญาซื้อน้ำมันล่วงหน้าแบบ Fixed Rate กับปั๊มที่ฟลีทเข้าไปใช้บริการประจำ</li>
+                        <li><span class="text-orange-300 font-bold">No LTL:</span> งดการวิ่งส่งของแบบไม่เต็มคัน (LTL) อย่างเด็ดขาด และเจรจาขยับ SLA วันส่งของกับลูกค้า</li>
+                    </ul>`;
+            } else if (dieselDiffPct > 0) { // Mild
+                setAICardStyle('card-ai-fleet', 'badge-fleet', 'MILD');
+                document.getElementById('ai-text-fleet').innerHTML = `
+                    <ul class="list-disc pl-4 space-y-1.5 text-slate-300">
+                        <li>เริ่มตรวจจับพฤติกรรมการขับขี่ (Eco-driving) และเช็คลมยางฟลีทรถทั้งหมดเพื่อประหยัดน้ำมัน 1-2%</li>
+                        <li>ควบรวมเส้นทางจัดส่งสินค้าให้คุ้มค่าที่สุด</li>
+                    </ul>`;
+            } else {
+                setAICardStyle('card-ai-fleet', 'badge-fleet', 'GOOD');
+                document.getElementById('ai-text-fleet').innerHTML = `<p class="text-emerald-400"><i class="fas fa-check-circle mr-1"></i> ราคาน้ำมันทรงตัว คงรอบการวิ่งรถตามโครงสร้าง SLA และงบประมาณปัจจุบัน</p>`;
+            }
+
+            // 3. Cold Storage / FT AI Logic (อิงจากการคุมคลังเย็น)
+            const ftDiffPct = baseFt > 0 ? ((targetFt - baseFt) / baseFt) * 100 : 0;
+            if (ftDiffPct > 15) { // Severe
+                setAICardStyle('card-ai-ft', 'badge-ft', 'SEVERE');
+                document.getElementById('ai-text-ft').innerHTML = `
+                    <ul class="list-disc pl-4 space-y-1.5">
+                        <li><span class="text-red-300 font-bold">CAPEX Solar:</span> ดึงแผนลงทุนแผงโซลาร์รูฟท็อป (Solar Rooftop) กลับมาทบทวนด่วน เนื่องจากจุดคุ้มทุน (ROI) จะเร็วขึ้นมาก</li>
+                        <li><span class="text-red-300 font-bold">Rate Increase:</span> หากมีการรับฝากสินค้าจากภายนอก ต้องพิจารณาปรับขึ้นเรทค่ารับฝาก (Storage Fee)</li>
+                    </ul>`;
+            } else if (ftDiffPct > 5) { // Moderate
+                setAICardStyle('card-ai-ft', 'badge-ft', 'MODERATE');
+                document.getElementById('ai-text-ft').innerHTML = `
+                    <ul class="list-disc pl-4 space-y-1.5">
+                        <li><span class="text-orange-300 font-bold">Space Consolidation:</span> บังคับถ่ายเทสินค้าแช่แข็งมารวมโซนเดียวกัน และตัดระบบทำความเย็นในห้องที่ว่าง</li>
+                        <li><span class="text-orange-300 font-bold">Peak Shifting:</span> ห้ามทำ Defrost หรือโหลดของเข้าคลังล็อตใหญ่ในช่วงเวลา Peak Load เด็ดขาด</li>
+                    </ul>`;
+            } else if (ftDiffPct > 0) { // Mild
+                setAICardStyle('card-ai-ft', 'badge-ft', 'MILD');
+                document.getElementById('ai-text-ft').innerHTML = `
+                    <ul class="list-disc pl-4 space-y-1.5 text-slate-300">
+                        <li>เร่งแผน Maintenance ทำความสะอาดคอยล์เย็นและเช็คซีลยางประตูเพื่อลดภาระการกินไฟคอมเพรสเซอร์</li>
+                    </ul>`;
+            } else {
+                setAICardStyle('card-ai-ft', 'badge-ft', 'GOOD');
+                document.getElementById('ai-text-ft').innerHTML = `<p class="text-emerald-400"><i class="fas fa-check-circle mr-1"></i> อัตราค่าไฟปกติ ดำเนินการเบิกจ่ายและจัดเก็บตาม Flow คลังแช่แข็งเดิม</p>`;
+            }
+
+            // 4. Interest AI Logic (อิงจาก Float/Fixed)
+            let hasFloat = (document.getElementById('type-st').value === 'float' || document.getElementById('type-tr').value === 'float' || document.getElementById('type-term').value === 'float');
+
+            if (adjInterest > 1.0) { // Severe Rate Hike
+                if (hasFloat) {
+                    setAICardStyle('card-ai-interest', 'badge-interest', 'SEVERE');
+                    document.getElementById('ai-text-interest').innerHTML = `
+                        <ul class="list-disc pl-4 space-y-1.5">
+                            <li><span class="text-red-300 font-bold">Urgent Restructure:</span> นโยบายดอกเบี้ยขึ้นรุนแรง ต้องรีบทำ Interest Rate Swap (IRS) สินเชื่อระยะยาวทั้งหมด</li>
+                            <li><span class="text-red-300 font-bold">Hold CAPEX:</span> ชะลอการกู้เงินเพื่อลงทุนในโครงการใหม่ๆ (เช่น การขยายคลัง) ออกไปก่อนจนกว่าดอกเบี้ยจะนิ่ง</li>
+                        </ul>`;
+                } else {
+                    setAICardStyle('card-ai-interest', 'badge-interest', 'GOOD');
+                    document.getElementById('ai-text-interest').innerHTML = `<p class="text-emerald-400">ปลอดภัยเต็มที่ พอร์ตเป็น Fixed Rate 100% ป้องกันความเสี่ยงดอกเบี้ยพุ่งทะลุเพดานได้สมบูรณ์แบบ</p>`;
+                }
+            } else if (adjInterest > 0) { // Mild to Moderate
+                if (hasFloat) {
+                    setAICardStyle('card-ai-interest', 'badge-interest', 'MODERATE');
+                    document.getElementById('ai-text-interest').innerHTML = `
+                        <ul class="list-disc pl-4 space-y-1.5">
+                            <li><span class="text-orange-300 font-bold">Pay Down Float:</span> นำกระแสเงินสดส่วนเกิน (ถ้ามี) ไปโปะยอดเงินกู้ระยะสั้น (PN/OD) ก่อน เพื่อดับดอกเบี้ยรายวัน</li>
+                            <li><span class="text-orange-300 font-bold">Fix Negotiation:</span> ทยอยเจรจาขอเปลี่ยน TR หรือ Term Loan เป็น Fixed Rate</li>
+                        </ul>`;
+                } else {
+                    setAICardStyle('card-ai-interest', 'badge-interest', 'GOOD');
+                    document.getElementById('ai-text-interest').innerHTML = `<p class="text-emerald-400">ไม่มีผลกระทบ พอร์ตเป็น Fixed Rate ทั้งหมด</p>`;
+                }
+            } else if (adjInterest < 0) { // Rate Cut
+                if (hasFloat) {
+                    setAICardStyle('card-ai-interest', 'badge-interest', 'GOOD');
+                    document.getElementById('ai-text-interest').innerHTML = `
+                        <ul class="list-disc pl-4 space-y-1.5">
+                            <li><span class="text-emerald-300 font-bold">Keep Float:</span> รักษาสัดส่วนหนี้แบบ Float ไว้เพื่อรับผลประโยชน์จากดอกเบี้ยขาลงต่อเนื่อง</li>
+                        </ul>`;
+                } else {
+                    setAICardStyle('card-ai-interest', 'badge-interest', 'MILD');
+                    document.getElementById('ai-text-interest').innerHTML = `
+                        <ul class="list-disc pl-4 space-y-1.5 text-slate-300">
+                            <li>เสียโอกาสดอกเบี้ยขาลง พิจารณาเช็คสัญญา Fixed Rate เดิม ว่ามีเงื่อนไขคุ้มค่าพอที่จะ Refinance หรือไม่</li>
+                        </ul>`;
+                }
+            } else {
+                setAICardStyle('card-ai-interest', 'badge-interest', 'NORMAL');
+                document.getElementById('ai-text-interest').innerHTML = `<p class="text-slate-400">สถานการณ์ทรงตัว ชำระและบริหารหนี้สินตามแผนการเงินเดิม</p>`;
+            }
+        }
+
+        function toggleScenarioPanel() {
+            const panel = document.getElementById('scenario-panel');
+            if (panel.classList.contains('panel-hidden')) {
+                panel.classList.remove('panel-hidden');
+                panel.classList.add('panel-visible');
+            } else {
+                panel.classList.remove('panel-visible');
+                panel.classList.add('panel-hidden');
+            }
+        }
+
+        function exportPDF() {
+            const element = document.getElementById('dashboard-content');
+            const w = element.scrollWidth * 0.75 + 40;
+            const h = element.scrollHeight * 0.75 + 40;
+
+            const opt = {
+                margin: 20,
+                filename: 'Financial_Risk_Monitoring_Report.pdf',
+                image: { type: 'jpeg', quality: 1 },
+                html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
+                jsPDF: { unit: 'pt', format: [w, h], orientation: 'landscape' }
+            };
+
+            element.style.maxWidth = 'none';
+            html2pdf().set(opt).from(element).save().then(() => {
+                element.style.maxWidth = '1600px';
+            });
+        }
+
+        function exportExcel() {
+            const data = [
+                ["Financial Risk Monitoring Report"], ["Exported On:", new Date().toLocaleString('th-TH')], [],
+                ["1. สมมติฐานที่ตั้งไว้ (Operations)", "เรทฐาน (Base)", "เรทคาดการณ์ (Target)"],
+                ["อัตราแลกเปลี่ยน (THB/USD)", document.getElementById('base-fx').value, document.getElementById('target-fx').value],
+                ["ราคาน้ำมันดีเซล (THB/L)", document.getElementById('base-diesel').value, document.getElementById('target-diesel').value],
+                ["ค่า Ft ไฟฟ้า (THB/หน่วย)", document.getElementById('base-ft').value, document.getElementById('target-ft').value],
+                [],
+                ["2. ข้อมูลพอร์ตสินเชื่อ (Loan Portfolio)", "ประเภทดอกเบี้ย", "ดบ.เดิม (%)", "ดบ.ใหม่ (%)", "ยอดคงค้าง (THB)"],
+                ["กู้ระยะสั้น (PN/OD)", document.getElementById('type-st').value, document.getElementById('rate-st').value, document.getElementById('new-rate-st').innerText, getRawNumber('vol-st')],
+                ["Trust Receipt (TR)", document.getElementById('type-tr').value, document.getElementById('rate-tr').value, document.getElementById('new-rate-tr').innerText, getRawNumber('vol-tr')],
+                ["Term Loan", document.getElementById('type-term').value, document.getElementById('rate-term').value, document.getElementById('new-rate-term').innerText, getRawNumber('vol-term')],
+                [],
+                ["3. สรุปผลกระทบทางการเงินรายเดือน (Monthly Impact)", "ยอดเงินสุทธิ (THB)"],
+                ["ส่วนต่างภาระอัตราแลกเปลี่ยน", document.getElementById('impact-fx').innerText.replace(/[^\d.-]/g, '')],
+                ["ส่วนต่างภาระค่าน้ำมันขนส่ง", document.getElementById('impact-fleet').innerText.replace(/[^\d.-]/g, '')],
+                ["ส่วนต่างภาระค่าไฟคลังเย็น", document.getElementById('impact-ft').innerText.replace(/[^\d.-]/g, '')],
+                ["ส่วนต่างภาระดอกเบี้ยจ่าย", document.getElementById('impact-interest').innerText.replace(/[^\d.-]/g, '')],
+                ["รวมยอดเงินสดที่ต้องสำรองเพิ่ม (Total)", document.getElementById('impact-total').innerText.replace(/[^\d.-]/g, '')]
+            ];
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            ws['!cols'] = [{ wch: 40 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 20 }];
+            XLSX.utils.book_append_sheet(wb, ws, "Risk Monitoring");
+            XLSX.writeFile(wb, "Financial_Risk_Monitoring_Report.xlsx");
+        }
+
+        window.onload = fetchAllData;
+    </script>
+</body>
+
+</html>
